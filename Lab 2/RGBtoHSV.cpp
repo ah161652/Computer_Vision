@@ -29,7 +29,7 @@ int main( int argc, char** argv )
  }
 
  // CONVERT AND SAVE THE IMAGE
- cvtColor( image, image, CV_BGR2HSV );
+ cvtColor( image, image, CV_BGR2LAB );
  imwrite( "hsv.jpg", image );
 
  return 0;
