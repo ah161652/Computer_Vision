@@ -19,76 +19,94 @@ int main() {
   // Mat dy = input_gray;
   int cols = input_gray.cols;
   int rows = input_gray.rows;
-  Mat dx(rows, cols, CV_8UC1, Scalar(0));
-  Mat dy(rows, cols, CV_8UC1, Scalar(0));
-  Mat grad(rows, cols, CV_8UC1, Scalar(0));
-  Mat orientation(rows, cols, CV_8UC1, Scalar(0));
+  Mat dx(rows, cols,  CV_64FC1, Scalar(0));
+  Mat dx_normalize(rows, cols,  CV_8UC1, Scalar(0));
+  Mat dy(rows, cols, CV_64FC1, Scalar(0));
+  Mat dy_normalize(rows, cols,  CV_8UC1, Scalar(0));
+  Mat grad(rows, cols, CV_64FC1, Scalar(0));
+  Mat grad_normalize(rows, cols, CV_8UC1, Scalar(0));
+  Mat orientation(rows, cols, CV_64FC1, Scalar(0));
+  Mat orientation_normalize(rows, cols, CV_8UC1, Scalar(0));
+
+  Mat threshold_magnitude(rows, cols,  CV_8UC1, Scalar(0));
 
   // int[3][3] Gx = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
   // int[3][3] Gy = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
   for(int y=0; y<input_gray.rows; y++) {
    for(int x=0; x<input_gray.cols; x++) {
 
-     int toprow = (input_gray.at<uchar>(mod(y-1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y-1,rows), mod(x,cols)))*0 + (input_gray.at<uchar>(mod(y-1,rows), mod(x+1,cols)))*1;
+     double toprow = (input_gray.at<uchar>(mod(y-1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y-1,rows), mod(x,cols)))*0 + (input_gray.at<uchar>(mod(y-1,rows), mod(x+1,cols)))*1;
 
-     int midrow = (input_gray.at<uchar>(mod(y,rows), mod(x,cols)))*(-2) + (input_gray.at<uchar>(mod(y,rows), mod(x-1,cols)))*0 + (input_gray.at<uchar>(mod(y,rows), mod(x+1,cols)))*2;
+     double midrow = (input_gray.at<uchar>(mod(y,rows), mod(x,cols)))*(-2) + (input_gray.at<uchar>(mod(y,rows), mod(x-1,cols)))*0 + (input_gray.at<uchar>(mod(y,rows), mod(x+1,cols)))*2;
 
-     int bottomrow = (input_gray.at<uchar>(mod(y+1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y+1,rows), mod(x,cols)))*0 + (input_gray.at<uchar>(mod(y+1,rows), mod(x+1,cols)))*1;
+     double bottomrow = (input_gray.at<uchar>(mod(y+1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y+1,rows), mod(x,cols)))*0 + (input_gray.at<uchar>(mod(y+1,rows), mod(x+1,cols)))*1;
 
-     int total_dx = (toprow + midrow + bottomrow);
+     double total_dx = (toprow + midrow + bottomrow);
 
-     if (total_dx > 255) total_dx = 255;
-     if (total_dx < 0) total_dx = 0;
 
-     dx.at<uchar>(y, x) = total_dx;
+     dx.at<double>(y, x) = total_dx;
 
         }
     }
-
-imwrite("coins_dx.jpg", dx);
+normalize(dx, dx_normalize, 0, 255,NORM_MINMAX, CV_8UC1);
+imwrite("coins_dx.jpg", dx_normalize);
 
 for(int y=0; y<input_gray.rows; y++) {
  for(int x=0; x<input_gray.cols; x++) {
 
-   int toprow_dy = (input_gray.at<uchar>(mod(y-1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y-1,rows), mod(x,cols)))*(-2) + (input_gray.at<uchar>(mod(y-1,rows), mod(x+1,cols)))*(-1);
+   double toprow_dy = (input_gray.at<uchar>(mod(y-1,rows), mod(x-1,cols)))*(-1) + (input_gray.at<uchar>(mod(y-1,rows), mod(x,cols)))*(-2) + (input_gray.at<uchar>(mod(y-1,rows), mod(x+1,cols)))*(-1);
 
-   int midrow_dy = (input_gray.at<uchar>(mod(y,rows), mod(x,cols)))*(0) + (input_gray.at<uchar>(mod(y,rows), mod(x-1,cols)))*0 + (input_gray.at<uchar>(mod(y,rows), mod(x+1,cols)))*0;
+   double midrow_dy = (input_gray.at<uchar>(mod(y,rows), mod(x,cols)))*(0) + (input_gray.at<uchar>(mod(y,rows), mod(x-1,cols)))*0 + (input_gray.at<uchar>(mod(y,rows), mod(x+1,cols)))*0;
 
-   int bottomrow_dy = (input_gray.at<uchar>(mod(y+1,rows), mod(x-1,cols)))*(1) + (input_gray.at<uchar>(mod(y+1,rows), mod(x,cols)))*2 + (input_gray.at<uchar>(mod(y+1,rows), mod(x+1,cols)))*1;
+   double bottomrow_dy = (input_gray.at<uchar>(mod(y+1,rows), mod(x-1,cols)))*(1) + (input_gray.at<uchar>(mod(y+1,rows), mod(x,cols)))*2 + (input_gray.at<uchar>(mod(y+1,rows), mod(x+1,cols)))*1;
 
-   int total_dy = (toprow_dy + midrow_dy + bottomrow_dy);
-   if (total_dy > 255) total_dy = 255;
-   if (total_dy < 0) total_dy = 0;
-   dy.at<uchar>(y, x) = total_dy;
+   double total_dy = (toprow_dy + midrow_dy + bottomrow_dy);
+
+   dy.at<double>(y, x) = total_dy;
 
       }
   }
-
-  imwrite("coins_dy.jpg", dy);
-
-  for(int y=0; y<input_gray.rows; y++) {
-   for(int x=0; x<input_gray.cols; x++) {
-
-     double total_grad = sqrt(pow(dy.at<uchar>(y,x),2) + pow(dx.at<uchar>(y,x),2));
-     if (total_grad > 70) total_grad = 255;
-     if (total_grad < 0) total_grad = 0;
-     grad.at<uchar>(y, x) = total_grad;
-
-        }
-    }
-
-  imwrite("coins_grad.jpg", grad);
+  normalize(dy, dy_normalize, 0, 255,NORM_MINMAX, CV_8UC1);
+  imwrite("coins_dy.jpg", dy_normalize);
 
   for(int y=0; y<input_gray.rows; y++) {
    for(int x=0; x<input_gray.cols; x++) {
-     double div = dy.at<uchar>(y,x)/(dx.at<uchar>(y,x)+1);
-     double final_orientation = atan(div);
-     if (final_orientation > 255) final_orientation = 255;
-     if (final_orientation < 0) final_orientation = 0;
-     orientation.at<uchar>(y,x) = final_orientation;
+
+     double total_grad = sqrt(pow(dy.at<double>(y,x),2) + pow(dx.at<double>(y,x),2));
+     grad.at<double>(y, x) = total_grad;
+
         }
     }
-  imwrite("coins_orientation.jpg",orientation);
-  return 0;
+  normalize(grad, grad_normalize, 0, 255,NORM_MINMAX, CV_8UC1);
+  imwrite("coins_grad.jpg", grad_normalize);
 
+  for(int y=0; y<input_gray.rows; y++) {
+   for(int x=0; x<input_gray.cols; x++) {
+     double val_y = dy.at<double>(y,x);
+     double val_x = dx.at<double>(y,x);
+     double final_orientation = atan2(val_y,val_x);
+     orientation.at<double>(y,x) = final_orientation;
+        }
+    }
+  normalize(orientation, orientation_normalize, 0, 255,NORM_MINMAX, CV_8UC1);
+  imwrite("coins_orientation.jpg",orientation_normalize);
+
+
+  for(int y=0; y<input_gray.rows; y++) {
+   for(int x=0; x<input_gray.cols; x++) {
+     if (grad_normalize.at<uchar>(y,x) >= 65) threshold_magnitude.at<uchar>(y,x) = 255;
+     else threshold_magnitude.at<uchar>(y,x) = 0;
+        }
+    }
+    imwrite("threshold.jpg",threshold_magnitude);
+
+  // vector<Vec3d> circles;
+  // HoughCircles(threshold_magnitude, circles, CV_HOUGH_GRADIENT, 1, threshold_magnitude.rows/8,200,100,0,0);
+  // for(size_t i = 0; i<circles.size(); i++){
+  //   Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+  //   int radius = cvRound(circles[i][2]);
+  //   circle(input_image, center, radius, Scalar(0,0,255), 3, 8, 0);
+  // }
+  // imwrite("final.jpg",input_image);
+return 0;
 }
