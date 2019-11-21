@@ -1,3 +1,40 @@
+FINAL OUTPUT!!!!:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <BEGIN
 POS count : consumed   500 : 500
 NEG count : acceptanceRatio    500 : 1
@@ -64,4 +101,3 @@ Precalculation time: 7
 |   6|        1|        0|
 +----+---------+---------+
 END>
-
