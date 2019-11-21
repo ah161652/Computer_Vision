@@ -1,60 +1,63 @@
+0:
+TPR:  1
+F1 Score:  0.25
 
 1:
-TPR:
-F1:
+TPR: 1
+F1: 0.5
 
 2:
-TPR:
-F1:
+TPR: 0
+F1: 0
 
 3:
-TPR:
-F1:
+TPR: 1
+F1:0.285714
 
 4:
-TPR:
-F1:
+TPR:1
+F1:0.2
 
 5:
-TPR:
-F1:
+TPR: 1
+F1:0.166667
 
 6:
-TPR:
-F1:
+TPR: 0
+F1: N/A
 
 7:
-TPR:
-F1:
+TPR: 0
+F1: 0
 
 8:
-TPR:
-F1:
+TPR: 0.5
+F1: 0.1111
 
 9:
-TPR:
-F1:
+TPR: 1
+F1: 0.285714
 
 10:
-TPR:
-F1:
+TPR: 0.66667
+F1: 0.173913
 
 11:
-TPR:
-F1:
+TPR: 0
+F1:0
 
 12:
-TPR:
-F1:
+TPR: 1
+F1: 0.4
 
 13:
-TPR:
-F1:
+TPR: 0
+F1: 0
 
 14:
-TPR:
-F1:
+TPR: 0
+F1: 0
 
 15:
-TPR:
-F1:
+TPR: 1
+F1: 0.666667

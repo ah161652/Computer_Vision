@@ -21,7 +21,7 @@ using namespace cv;
 void detectAndDisplay( Mat frame, int fileNumber);
 void groundTruth (Mat frame, int fileNumber);
 double tp_count(vector<Rect> faces, int fileNumber);
-double f1Score(double count_true_positive, double	count_false_positive);
+double f1Score(double count_true_positive, double	count_false_positive, double false_negative);
 
 /** Global variables */
 String cascade_name = "frontalface.xml";
@@ -79,9 +79,11 @@ void detectAndDisplay( Mat frame, int fileNumber)
 
 	//Call tpr function with ful set of detected faces
 	double count_true_positive = tp_count(faces, fileNumber);
+	double count_false_positive = faces.size()-count_true_positive;
+	double false_negative = face_count[fileNumber] - count_true_positive;
+	//Calculate F1 score with true positive count and false positive count
+	double f1 = f1Score(count_true_positive, count_false_positive, false_negative);
 
-	//Calculate f1Score with true positives and false positives
-	double f1 = f1Score(count_true_positive, (faces.size()-count_true_positive));
 }
 
 
@@ -134,11 +136,19 @@ double tp_count(vector<Rect> faces, int fileNumber){
 	return count_true_positive;
 }
 
-double f1Score(double count_true_positive, double	count_false_positive){
-	double precision = (count_true_positive)/(count_true_positive + count_false_positive);
-	double recall = (count_true_positive)/(count_true_positive + 0);
+double f1Score(double count_true_positive, double	count_false_positive, double false_negative){
+	double f1;
 
-	double f1 = 2 * (precision*recall) / (precision + recall);
+	//Required variables using TP and FP count
+	double precision = (count_true_positive)/(count_true_positive + count_false_positive);
+	double recall = (count_true_positive)/(count_true_positive + false_negative);
+	if (precision + recall == 0) {
+		f1 = 0;
+	}
+	else{
+		f1 = 2 * (precision*recall) / (precision + recall);
+	}
+
 	std::cout << "F1 Score:  "<< f1 << '\n';
 	return f1;
 }

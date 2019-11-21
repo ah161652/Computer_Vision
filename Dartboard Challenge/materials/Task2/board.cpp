@@ -22,7 +22,7 @@ using namespace cv;
 void detectAndDisplay( Mat frame);
 void groundTruth (Mat frame, int fileNumber);
 double tp_count(vector<Rect> boards, int fileNumber);
-double f1Score(double count_true_positive, double	count_false_positive);
+double f1Score(double count_true_positive, double	count_false_positive, double false_negative);
 
 /** Global variables */
 String cascade_name = "dartcascade/cascade.xml";
@@ -30,9 +30,6 @@ CascadeClassifier cascade;
 std::vector<Rect> boards;
 
 int coordinates[20][4] = {{459,36,573,172},{218,152,369,299},{112,109,178,174},{332,157,380,211},{207,120,396,281},{446,151,529,235},{219,124,266,172},{271,187,386,299},{73,263,117,327},{857,231,943,321},{227,73,406,253},{102,116,175,198},{590,139,633,201},{921,158,947,206},{182,115,226,166},{162,96,208,198},{288,138,388,236},{135,116,229,212},{1002,112,1096,206},{171,75,273,178}};
-int coordinates8[2][4] = {{73,263,117,327},{857,231,943,321}};
-int coordinates10[3][4] = {{102,116,175,198},{590,139,633,201},{921,158,947,206}};
-int coordinates14[2][4] = {{135,116,229,212},{1002,112,1096,206}};
 
 int board_count[16]={1,1,1,1,1,1,1,1,2,1,3,1,1,1,2,1};
 int first_board_index[16] = {0,1,2,3,4,5,6,7,8,10,11,14,15,16,17,19};
@@ -56,9 +53,11 @@ int main( int argc, const char** argv )
 
 	//Call tpr function with full set of detected faces
 	double count_true_positive = tp_count(boards, fileNumber);
-
+	double false_negative = board_count[fileNumber] - count_true_positive;
+	double count_false_positive = boards.size()-count_true_positive;
+	
 	//Calculate F1 score with true positive count and false positive count
-	double f1 = f1Score(count_true_positive, (boards.size()-count_true_positive));
+	double f1 = f1Score(count_true_positive, count_false_positive, false_negative);
 
 	// 4. Save Result Image
 	imwrite( "detected.jpg", frame );
@@ -91,6 +90,7 @@ void detectAndDisplay( Mat frame)
 
 void groundTruth (Mat frame, int fileNumber){
 	//dependant on file name draw all True boards using global arrays
+	//If no boards dont draw any
 	if (board_count[fileNumber] == 0) {
 		return;
 	}
@@ -109,8 +109,8 @@ double iou(Rect_<int> current_true, Rect_<int> current_detected){
 	Rect_<int> intersection = current_true & current_detected;
 
 	//Union is trivial if intersection and total area is known
-	double union_of = current_detected.area() + current_true.area() - intersection.area();
-	double iou_val = (intersection.area())/(union_of);
+	double union_of_area = current_detected.area() + current_true.area() - intersection.area();
+	double iou_val = (intersection.area())/(union_of_area);
 
 	return iou_val;
 }
@@ -127,10 +127,12 @@ double tp_count(vector<Rect> boards, int fileNumber){
 	//Gather indexes specific for that file
 	int i = first_board_index[fileNumber];
 	int limit = board_count[fileNumber] + i;
+
+	//Iterate through all true positives and detected boards and calculate intersection/union.
 	for (i; i < limit; i++) {
 		for( int j = 0; j < boards.size(); j++ ){
 				Rect_<int> current_true(coordinates[i][0],coordinates[i][1],coordinates[i][2]-coordinates[i][0],coordinates[i][3]-coordinates[i][1]);
-				if(iou(current_true,boards[j]) > 0.4) count_true_positive++;
+				if(iou(current_true,boards[j]) > 0.45) count_true_positive++;
 		}
 	}
 
@@ -142,12 +144,19 @@ double tp_count(vector<Rect> boards, int fileNumber){
 }
 
 //Calculate the F1 Score
-double f1Score(double count_true_positive, double	count_false_positive){
+double f1Score(double count_true_positive, double	count_false_positive, double false_negative){
+	double f1;
+
 	//Required variables using TP and FP count
 	double precision = (count_true_positive)/(count_true_positive + count_false_positive);
-	double recall = (count_true_positive)/(count_true_positive + 0);
+	double recall = (count_true_positive)/(count_true_positive + false_negative);
+	if (precision + recall == 0) {
+		f1 = 0;
+	}
+	else{
+		f1 = 2 * (precision*recall) / (precision + recall);
+	}
 
-	double f1 = 2 * (precision*recall) / (precision + recall);
 	std::cout << "F1 Score:  "<< f1 << '\n';
 	return f1;
 }
