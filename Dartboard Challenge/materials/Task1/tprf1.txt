@@ -1,0 +1,60 @@
+
+1:
+TPR: N/A
+F1: N/A
+
+2:
+TPR: N/A
+F1: N/A
+
+3:
+TPR: N/A
+F1: N/A
+
+4:
+TPR: 1
+F1: 1
+
+5:
+TPR: 1
+F1: 0.88
+
+6:
+TPR: 0
+F1: N/A
+
+7:
+TPR: 1
+F1: 1
+
+8:
+TPR: N/A
+F1: N/A
+
+9:
+TPR: 1
+F1: 0.4
+
+10:
+TPR: N/A
+F1: N/A
+
+11:
+TPR: 1
+F1: 1
+
+12:
+TPR: N/A
+F1: N/A
+
+13:
+TPR: 1
+F1: 0.66667
+
+14:
+TPR: 1
+F1: 0.5
+
+15:
+TPR: N/A
+F1: N/A

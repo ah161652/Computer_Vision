@@ -19,7 +19,7 @@ using namespace std;
 using namespace cv;
 
 /** Function Headers */
-void detectAndDisplay( Mat frame, String fileName);
+void detectAndDisplay( Mat frame);
 void groundTruth (Mat frame, int fileNumber);
 double tp_count(vector<Rect> boards, int fileNumber);
 double f1Score(double count_true_positive, double	count_false_positive);
@@ -29,11 +29,13 @@ String cascade_name = "dartcascade/cascade.xml";
 CascadeClassifier cascade;
 std::vector<Rect> boards;
 
-int coordinates[16][4] = {{426,0,625,220},{167,104,417,353},{90,86,202,197},{313,137,397,228},{158,67,385,328},{415,127,552,265},{204,107,281,188},{234,152,406,337},{0,0,0,0},{167,18,465,317},{0,0,0,0},{168,95,239,194},{153,58,223,233},{257,104,419,270},{0,0,0,0},{128,36,301,213}};
-int coordinates8[2][4] = {{62,241,133,350},{830,203,973,353}};
-int coordinates10[3][4] = {{76,88,197,228},{578,119,647,225},{914,143,954,221}};
-int coordinates14[2][4] = {{105,85,261,244},{973,80,1126,236}};
+int coordinates[20][4] = {{459,36,573,172},{218,152,369,299},{112,109,178,174},{332,157,380,211},{207,120,396,281},{446,151,529,235},{219,124,266,172},{271,187,386,299},{73,263,117,327},{857,231,943,321},{227,73,406,253},{102,116,175,198},{590,139,633,201},{921,158,947,206},{182,115,226,166},{162,96,208,198},{288,138,388,236},{135,116,229,212},{1002,112,1096,206},{171,75,273,178}};
+int coordinates8[2][4] = {{73,263,117,327},{857,231,943,321}};
+int coordinates10[3][4] = {{102,116,175,198},{590,139,633,201},{921,158,947,206}};
+int coordinates14[2][4] = {{135,116,229,212},{1002,112,1096,206}};
 
+int board_count[16]={1,1,1,1,1,1,1,1,2,1,3,1,1,1,2,1};
+int first_board_index[16] = {0,1,2,3,4,5,6,7,8,10,11,14,15,16,17,19};
 /** @function main */
 int main( int argc, const char** argv )
 {
@@ -47,7 +49,7 @@ int main( int argc, const char** argv )
 	if( !cascade.load( cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
 
 	// 3. Detect Faces and Display Result
-	detectAndDisplay(frame, fileName);
+	detectAndDisplay(frame);
 
 	//Draw all ground truth rectangles
 	groundTruth(frame, fileNumber);
@@ -66,7 +68,7 @@ int main( int argc, const char** argv )
 
 
 /** @function detectAndDisplay */
-void detectAndDisplay( Mat frame, String fileName)
+void detectAndDisplay( Mat frame)
 {
 
 	Mat frame_gray;
@@ -88,24 +90,17 @@ void detectAndDisplay( Mat frame, String fileName)
 }
 
 void groundTruth (Mat frame, int fileNumber){
-	//dependant on file name draw all True faces using global arrays
-	if (fileNumber == 8){
-		for (size_t i = 0; i < 2; i++) {
-			rectangle(frame, Point(coordinates8[i][0], coordinates8[i][1]), Point(coordinates8[i][2], coordinates8[i][3]), Scalar(0,0,255), 2);
-		}
+	//dependant on file name draw all True boards using global arrays
+	if (board_count[fileNumber] == 0) {
+		return;
 	}
-	else if (fileNumber == 10){
-		for (size_t i = 0; i < 3; i++) {
-			rectangle(frame, Point(coordinates10[i][0], coordinates10[i][1]), Point(coordinates10[i][2], coordinates10[i][3]), Scalar(0,0,255), 2);
-		}
-	}
-	else if (fileNumber == 14){
-		for (size_t i = 0; i < 2; i++) {
-			rectangle(frame, Point(coordinates14[i][0], coordinates14[i][1]), Point(coordinates14[i][2], coordinates14[i][3]), Scalar(0,0,255), 2);
-		}
-	}
-	else{
-		rectangle(frame, Point(coordinates[fileNumber][0], coordinates[fileNumber][1]), Point(coordinates[fileNumber][2], coordinates[fileNumber][3]), Scalar(0,0,255), 2);
+
+	//Gather indexes specific for that file
+	int i = first_board_index[fileNumber];
+	int limit = board_count[fileNumber] + i;
+
+	for (i; i < limit; i++) {
+		rectangle(frame, Point(coordinates[i][0], coordinates[i][1]), Point(coordinates[i][2], coordinates[i][3]), Scalar(0,0,255), 2);
 	}
 }
 
@@ -124,42 +119,24 @@ double iou(Rect_<int> current_true, Rect_<int> current_detected){
 double tp_count(vector<Rect> boards, int fileNumber){
 	double count_true_positive = 0;
 	double tpr;
-
-	//dependant on file name draw all True faces using global arrays
-	if (fileNumber == 8){
-		for (size_t i = 0; i < 2; i++) {
-			for( int j = 0; j < boards.size(); j++ ){
-					Rect_<int> current_true(coordinates8[i][0],coordinates8[i][1],coordinates8[i][2]-coordinates8[i][0],coordinates8[i][3]-coordinates8[i][1]);
-					if(iou(current_true,boards[j]) > 0.5) count_true_positive++;
-			}
-			tpr = count_true_positive/2;
-		}
+	//If no ground truth faces, true positive is N/A;
+	if (board_count[fileNumber] == 0) {
+		std::cout << "TPR: NaN " << '\n';
+		return std::numeric_limits<double>::quiet_NaN();
 	}
-	else if (fileNumber == 10){
-		for (size_t i = 0; i < 3; i++) {
-			for( int j = 0; j < boards.size(); j++ ){
-					Rect_<int> current_true(coordinates10[i][0],coordinates10[i][1],coordinates10[i][2]-coordinates10[i][0],coordinates10[i][3]-coordinates10[i][1]);
-					if(iou(current_true,boards[j]) > 0.5) count_true_positive++;
-			}
-			tpr = count_true_positive/3;
-		}
-	}
-	else if (fileNumber == 14){
-		for (size_t i = 0; i < 2; i++) {
-			for( int j = 0; j < boards.size(); j++ ){
-					Rect_<int> current_true(coordinates14[i][0],coordinates14[i][1],coordinates14[i][2]-coordinates14[i][0],coordinates14[i][3]-coordinates14[i][1]);
-					if(iou(current_true,boards[j]) > 0.5) count_true_positive++;
-			}
-			tpr = count_true_positive/2;
-		}
-	}
-	else{
+	//Gather indexes specific for that file
+	int i = first_board_index[fileNumber];
+	int limit = board_count[fileNumber] + i;
+	for (i; i < limit; i++) {
 		for( int j = 0; j < boards.size(); j++ ){
-				Rect_<int> current_true(coordinates[fileNumber][0],coordinates[fileNumber][1],coordinates[fileNumber][2]-coordinates[fileNumber][0],coordinates[fileNumber][3]-coordinates[fileNumber][1]);
-				if(iou(current_true,boards[j]) > 0.5) count_true_positive++;
+				Rect_<int> current_true(coordinates[i][0],coordinates[i][1],coordinates[i][2]-coordinates[i][0],coordinates[i][3]-coordinates[i][1]);
+				if(iou(current_true,boards[j]) > 0.4) count_true_positive++;
 		}
-		tpr = count_true_positive/1;
 	}
+
+	//Calculate true positive ratio
+	tpr = count_true_positive/board_count[fileNumber];
+
 	std::cout << "TPR:  "<< tpr << '\n';
 	return count_true_positive;
 }
