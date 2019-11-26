@@ -9,14 +9,18 @@ int mod(int a, int b){
   return (a%b+b)%b;
 }
 
+Mat gradientDirection( Mat input_image );
+Mat gradientMagnitude( Mat input_image );
+
+
 int main() {
   // Read image from file
   Mat input_image = imread("coins1.png", 1);
   Mat input_gray;
 
   cvtColor(input_image, input_gray, CV_BGR2GRAY);
-  // Mat dx = input_gray;
-  // Mat dy = input_gray;
+
+
   int cols = input_gray.cols;
   int rows = input_gray.rows;
   Mat dx(rows, cols,  CV_64FC1, Scalar(0));
@@ -109,4 +113,11 @@ for(int y=0; y<input_gray.rows; y++) {
   // }
   // imwrite("final.jpg",input_image);
 return 0;
+}
+
+Mat gradientDirection( Mat input_image ){
+
+}
+Mat gradientMagnitude( Mat input_image ){
+
 }
