@@ -25,9 +25,11 @@ double tp_count(vector<Rect> boards, int fileNumber);
 double f1Score(double count_true_positive, double	count_false_positive, double false_negative);
 Mat gradientMagnitude( Mat input_image );
 Mat gradientDirection( Mat input_image );
-Mat houghSpace(Mat gradientMagnitudeImage, Mat gradientDirectionImage );
+Mat houghSpaceLine(Mat gradientMagnitudeImage, Mat gradientDirectionImage );
+Mat houghSpaceCircle(Mat gradientMagnitudeImage, Mat gradientDirectionImage );
 Mat thresholdValue(Mat image, int value);
 Mat drawLines(Mat houghSpace, Mat image);
+Mat drawCircles(Mat houghSpace, Mat image);
 
 /** Global variables */
 String cascade_name = "dartcascade/cascade.xml";
@@ -64,18 +66,28 @@ int main( int argc, const char** argv )
 
 	//Apply threshold to magnitude image
 	Mat thresholdMagnitude;
-	thresholdMagnitude = thresholdValue(gradientMagnitudeImage, 160);
+	thresholdMagnitude = thresholdValue(gradientMagnitudeImage, 140);
 	imwrite( "threshold.jpg", thresholdMagnitude );
 
 	//Get hough Space
 	Mat houghSpaceIMG;
-	houghSpaceIMG = houghSpace(thresholdMagnitude, gradientDirectionImage);
-	imwrite( "houghSpace.jpg", houghSpaceIMG );
+	houghSpaceIMG = houghSpaceLine(thresholdMagnitude, gradientDirectionImage);
+	imwrite( "houghSpaceLine.jpg", houghSpaceIMG );
 
 	//Try and draw lines
 	Mat houghLines;
 	houghLines = drawLines(houghSpaceIMG,frame);
 	imwrite( "houghLines.jpg", houghLines );
+
+	//Get hough Space
+	Mat houghSpaceIMGCircle;
+	houghSpaceIMGCircle = houghSpaceCircle(thresholdMagnitude, gradientDirectionImage);
+	//imwrite( "houghSpaceCircle.jpg", houghSpaceIMGCircle );
+
+	//Try and draw lines
+	Mat houghCircles;
+	houghCircles = drawCircles(houghSpaceIMGCircle,frame);
+	imwrite( "houghCircles.jpg", houghLines );
 
 	//Draw all ground truth rectangles
 	groundTruth(frame, fileNumber);
@@ -240,39 +252,104 @@ Mat thresholdValue(cv::Mat image, int value){
 		return image;
 }
 
-Mat houghSpace(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
+Mat houghSpaceLine(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
 	Mat houghSpace(2*(gradientMagnitudeImage.cols + gradientMagnitudeImage.rows), 360, CV_32SC1, Scalar(0));
 
-	for (size_t y = 0; y < gradientMagnitudeImage.rows; y++) {
-		for (size_t x = 0; x < gradientMagnitudeImage.cols; x++) {
+	for (int y = 0; y < gradientMagnitudeImage.rows; y++) {
+		for (int x = 0; x < gradientMagnitudeImage.cols; x++) {
 			if (gradientMagnitudeImage.at<uchar>(y,x) == 255) {
-				for (size_t pheta = 0; pheta < 360; pheta++) {
-					double ro = x*cos(pheta*pi/180) + y*sin(pheta*pi/180) + gradientMagnitudeImage.rows + gradientMagnitudeImage.cols;
-					houghSpace.at<int>(ro,pheta)++;
-				}
+
+					//double pheta = gradientDirectionImage.at<double>(y,x);
+					for (double i = 0; i < 360; i+= 1) {
+						double ro = x*cos(i*pi/180) + y*sin(i*pi/180) + gradientMagnitudeImage.cols + gradientMagnitudeImage.rows;
+						houghSpace.at<int>(ro,i)++;
+					}
 			}
 		}
 	}
 	//Normalize then return the houghspace
-	normalize(houghSpace, houghSpace, 0, 255, NORM_MINMAX, CV_32SC1);
+	//normalize(houghSpace, houghSpace, 0, 255, NORM_MINMAX, CV_32SC1);
 	return houghSpace;
 }
 
 Mat drawLines(Mat houghSpace, Mat image){
-	for (size_t y = 0; y < houghSpace.rows; y++) {
-		for (size_t x = 0; x < houghSpace.cols; x++) {
-			if (houghSpace.at<int>(y,x) > 160) {
-				int ro = y - image.rows - image.cols;
-				Point p1, p2;
-				double x0 = cos(x) * ro;
-				double y0 = sin(x) * ro;
-				p1.x = x0+1000*(-sin(x));
-				p1.y = y0+1000*cos(x);
-				p2.x = x0-1000*(-sin(x));
-				p2.y = y0-1000*cos(x);
-				line(image, p1, p2, Scalar(0,0,255), 2);
+	double min , tempMax;
+	double max = 1000;
+	int locationMax[2];
+	minMaxIdx(houghSpace, &min, &tempMax, NULL, locationMax);
+
+	while (max > tempMax*0.8) {
+			minMaxIdx(houghSpace, &min, &max, NULL, locationMax);
+			int y = locationMax[0];
+			int x = locationMax[1];
+
+			int ro = y - (image.cols + image.rows);
+			Point p1, p2;
+			double x0 = cos(x*pi/180) * ro;
+			double y0 = sin(x*pi/180) * ro;
+			p1.x = x0+1000*(-sin(x*pi/180));
+			p1.y = y0+1000*cos(x*pi/180);
+			p2.x = x0+(-1000)*(-sin(x*pi/180));
+			p2.y = y0+(-1000)*cos(x*pi/180);
+
+
+
+			line(image, p1, p2, Scalar(0,0,255), 2);
+			for (double j = y - 2; j < y + 3; j++) {
+				for (double i = x - 2; i < x + 3; i++) {
+					houghSpace.at<int>(j,i) = 0;
+				}
+			}
+	}
+	return image;
+}
+
+Mat houghSpaceCircle(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
+	int num_radius = round(max(gradientMagnitudeImage.rows, gradientMagnitudeImage.cols) * 0.3);
+	int dimensions[3] = {gradientMagnitudeImage.rows, gradientMagnitudeImage.cols, num_radius};
+	Mat houghSpaceCircle(3, dimensions, CV_32SC1, cv::Scalar(0));
+	for (size_t y = 0; y < gradientMagnitudeImage.rows; y++) {
+		for (size_t x = 0; x < gradientMagnitudeImage.cols; x++) {
+			for(size_t r = 5; r < num_radius; r += 1){
+				if (gradientMagnitudeImage.at<uchar>(y,x) == 255) {
+					double pheta = gradientDirectionImage.at<double>(y,x);
+					for (double i = pheta - 0.1; i < pheta + 0.1; i+= 0.03) {
+
+						int a = round(x - (r * cos(i)));
+						int b = round(y - (r * sin(i)));
+
+						if (a < 0 | b < 0 | a >= dimensions[1] | b >= dimensions[0]) { continue; }
+						houghSpaceCircle.at<int>(b,a,r)++;
+				}
+				}
 			}
 		}
+	}
+
+	//Normalize then return the houghspace
+	//normalize(houghSpaceCircle, houghSpaceCircle, 0, 255, NORM_MINMAX, CV_32SC1);
+	return houghSpaceCircle;
+}
+
+Mat drawCircles(Mat houghSpace, Mat image){
+
+	double min , tempMax;
+	double max = 1000;
+	int locationMax[3];
+	minMaxIdx(houghSpace, &min, &tempMax, NULL, locationMax);
+
+	while (max > tempMax*0.75) {
+			minMaxIdx(houghSpace, &min, &max, NULL, locationMax);
+
+			int y = locationMax[0];
+			int x = locationMax[1];
+			int radius = locationMax[2];
+			circle(image, Point(x,y), radius, Scalar(0,100,255), 2);
+			for (double j = y - 2; j < y + 3; j++) {
+				for (double i = x - 2; i < x + 3; i++) {
+					houghSpace.at<int>(j,i,radius) = 0;
+				}
+			}
 	}
 	return image;
 }
