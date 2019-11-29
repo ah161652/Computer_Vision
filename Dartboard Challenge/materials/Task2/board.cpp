@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// COMS30121 - board.cpp
+// COMS30121 - board.cpp Part 2
 //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -55,7 +55,7 @@ int main( int argc, const char** argv )
 	double count_true_positive = tp_count(boards, fileNumber);
 	double false_negative = board_count[fileNumber] - count_true_positive;
 	double count_false_positive = boards.size()-count_true_positive;
-	
+
 	//Calculate F1 score with true positive count and false positive count
 	double f1 = f1Score(count_true_positive, count_false_positive, false_negative);
 
