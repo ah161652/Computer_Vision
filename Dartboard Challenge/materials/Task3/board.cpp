@@ -51,7 +51,7 @@ int intersectionCount = 0;
 int main( int argc, const char** argv )
 {
   // 1. Read Input Image & Convert to a grey
-	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);boards
+	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);
 	Mat input_gray;
   cvtColor(frame, input_gray, CV_BGR2GRAY);
 
@@ -226,7 +226,7 @@ Mat gradientDirection(cv::Mat input_image ){
   int delta = 0;
 
   /// Gradient X
-  Sobel( input_image, grad_x, CV_64FC1, 1, 0, 3 input_i, scale, delta, BORDER_DEFAULT );
+  Sobel( input_image, grad_x, CV_64FC1, 1, 0, 3 , scale, delta, BORDER_DEFAULT );
   /// Gradient Y
   Sobel( input_image, grad_y, CV_64FC1, 0, 1, 3, scale, delta, BORDER_DEFAULT );
 
