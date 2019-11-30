@@ -39,7 +39,6 @@ CascadeClassifier cascade;
 std::vector<Rect> boards;
 std::vector<Rect> trueBoards;
 const double pi = 3.14159265358979323846;
-
 int coordinates[20][4] = {{459,36,573,172},{218,152,369,299},{112,109,178,174},{332,157,380,211},{207,120,396,281},{446,151,529,235},{219,124,266,172},{271,187,386,299},{73,263,117,327},{857,231,943,321},{227,73,406,253},{102,116,175,198},{590,139,633,201},{921,158,947,206},{182,115,226,166},{162,96,208,198},{288,138,388,236},{135,116,229,212},{1002,112,1096,206},{171,75,273,178}};
 int board_count[16]={1,1,1,1,1,1,1,1,2,1,3,1,1,1,2,1};
 int first_board_index[16] = {0,1,2,3,4,5,6,7,8,10,11,14,15,16,17,19};
@@ -52,12 +51,11 @@ int intersectionCount = 0;
 int main( int argc, const char** argv )
 {
   // 1. Read Input Image & Convert to a grey
-	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);
+	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);boards
 	Mat input_gray;
   cvtColor(frame, input_gray, CV_BGR2GRAY);
 
-	//Get file names and numbers for groundTruth comparisons later
-	String fileName = argv[1];
+	//Get file numbers for groundTruth comparisons later
 	int fileNumber = atoi(argv[2]);
 
 	// 2. Load the Strong Classifier in a structure called `Cascade'
@@ -72,22 +70,28 @@ int main( int argc, const char** argv )
 	thresholdMagnitude = thresholdValue(gradientMagnitudeImage, 140);
 	//imwrite( "threshold.jpg", thresholdMagnitude );
 
-	//Get hough Space
+	//Get hough Space for line detection
 	Mat houghSpaceIMG;
 	houghSpaceIMG = houghSpaceLine(thresholdMagnitude, gradientDirectionImage);
 	//imwrite( "houghSpaceLine.jpg", houghSpaceIMG );
 
-	//Get hough Space Circle
+	//Get hough Space for Circle detection
 	Mat houghSpaceIMGCircle;
 	houghSpaceIMGCircle = houghSpaceCircle(thresholdMagnitude, gradientDirectionImage);
 
+	// Function for extracting lines from hough space to image space
 	getLines(houghSpaceIMG, frame);
+
+	//Function for extracting circles from hough space to image space
 	getCircles(houghSpaceIMGCircle);
 
+	// Function to calculate coordinates for intersections of detected lines (stored in global variable)
 	intersectionFunc();
 
+	// Viola-Jones detection
 	detectViola(frame);
 
+	// Combine results of viola-jones, circle detection and line detection.
 	Mat finalImage;
 	finalImage = combinationFunc(frame, houghSpaceIMG, houghSpaceIMGCircle);
 
@@ -120,7 +124,7 @@ void detectViola( Mat frame){
 	cascade.detectMultiScale( frame_gray, boards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(300,300) );
 
        // 3. Print number of boards found
-	std::cout << "Number of boards detected: " << boards.size() << std::endl;
+	std::cout << "Number of boards detected by Viola-Jones: " << boards.size() << std::endl;
 
 }
 
@@ -208,6 +212,7 @@ Mat gradientMagnitude(cv::Mat input_image ){
   Sobel( input_image, dy, CV_64FC1, 0, 1, 3, 1, 0, BORDER_DEFAULT );
 	convertScaleAbs( dy, abs_dy );
 
+	//Combine x and y gradients
 	addWeighted( abs_dx, 0.5, abs_dy, 0.5, 0, magnitudeIMG );
   return magnitudeIMG;
 }
@@ -221,10 +226,11 @@ Mat gradientDirection(cv::Mat input_image ){
   int delta = 0;
 
   /// Gradient X
-  Sobel( input_image, grad_x, CV_64FC1, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+  Sobel( input_image, grad_x, CV_64FC1, 1, 0, 3 input_i, scale, delta, BORDER_DEFAULT );
   /// Gradient Y
   Sobel( input_image, grad_y, CV_64FC1, 0, 1, 3, scale, delta, BORDER_DEFAULT );
 
+	// Use x and y gradients to calculate orienation and create orientation image.
   for(int y = 0; y < grad_y.rows; y++) {
    for(int x = 0; x < grad_x.cols; x++) {
 
@@ -250,11 +256,13 @@ Mat thresholdValue(cv::Mat image, int value){
 }
 
 Mat houghSpaceLine(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
+	// Assign an image double the size of the hough space
 	Mat houghSpace(2*(gradientMagnitudeImage.cols + gradientMagnitudeImage.rows), 360, CV_32SC1, Scalar(0));
+
+	// Generate hough space for lines and store in Mat
 	for (int y = 0; y < gradientMagnitudeImage.rows; y++) {
 		for (int x = 0; x < gradientMagnitudeImage.cols; x++) {
 			if (gradientMagnitudeImage.at<uchar>(y,x) == 255) {
-					//double pheta = gradientDirectionImage.at<double>(y,x);
 					for (double i = 0; i < 360; i+= 1) {
 						double ro = x*cos(i*pi/180) + y*sin(i*pi/180) + gradientMagnitudeImage.cols + gradientMagnitudeImage.rows;
 						houghSpace.at<int>(ro,i)++;
@@ -262,8 +270,6 @@ Mat houghSpaceLine(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
 			}
 		}
 	}
-	//Normalize then return the houghspace
-	//normalize(houghSpace, houghSpace, 0, 255, NORM_MINMAX, CV_32SC1);
 	return houghSpace;
 }
 
@@ -272,11 +278,13 @@ void getLines(Mat houghSpace, Mat image){
 	double max = 1000;
 	int locationMax[2];
 
+	// Find the first 10 strongest lines that are not within close proximity of each other in hough space
 	for (int n = 0; n < 10; n++) {
 		minMaxIdx(houghSpace, &min, &max, NULL, locationMax);
 		int y = locationMax[0];
 		int x = locationMax[1];
 
+		//Convert line from hough space to 2 sets of image space coordinates and store in  lines global array.
 		int ro = y - (image.cols + image.rows);
 		double x0 = cos(x*pi/180) * ro;
 		double y0 = sin(x*pi/180) * ro;
@@ -285,6 +293,7 @@ void getLines(Mat houghSpace, Mat image){
 		lines[n][2] = round(x0+(-1000)*(-sin(x*pi/180)));
 		lines[n][3] = round(y0+(-1000)*cos(x*pi/180));
 
+		// 0 anything close to current line in hough space to make sure you are getting unique strong lines
 		for (double j = y - 5; j < y + 5; j++) {
 			for (double i = x - 5; i < x + 5; i++) {
 				houghSpace.at<int>(j,i) = 0;
@@ -295,9 +304,12 @@ void getLines(Mat houghSpace, Mat image){
 }
 
 Mat houghSpaceCircle(Mat gradientMagnitudeImage, Mat gradientDirectionImage ){
+	//Define max radius, store dimensions in an array, and create a new Mat image to work with
 	int num_radius = round(max(gradientMagnitudeImage.rows, gradientMagnitudeImage.cols) * 0.3);
 	int dimensions[3] = {gradientMagnitudeImage.rows, gradientMagnitudeImage.cols, num_radius};
 	Mat houghSpaceCircle(3, dimensions, CV_32SC1, cv::Scalar(0));
+
+	// Generate hough space for circles
 	for (size_t y = 0; y < gradientMagnitudeImage.rows; y++) {
 		for (size_t x = 0; x < gradientMagnitudeImage.cols; x++) {
 			for(size_t r = 5; r < num_radius; r += 1){
@@ -323,7 +335,8 @@ void getCircles(Mat houghSpace){
 	double min , tempMax;
 	double max = 1000;
 	int locationMax[3];
-	//minMaxIdx(houghSpace, &min, &tempMax, NULL, locationMax);
+
+	//Find the first 10 strongest circles that are not in close proxiity to each other in hough space
 	for (int n = 0; n < 10; n++) {
 		minMaxIdx(houghSpace, &min, &max, NULL, locationMax);
 
@@ -331,9 +344,12 @@ void getCircles(Mat houghSpace){
 		int x = locationMax[1];
 		int radius = locationMax[2];
 
+		//Allocate circle centre and radius to a image space global array.
 		circles[n][0] = round(x);
 		circles[n][1] = round(y);
 		circles[n][2] = round(radius);
+
+		// 0 anything close to current circle in hough space to make sure you are getting unique strong lines
 		for (double j = y - 5; j < y + 5; j++) {
 			for (double i = x - 5; i < x + 5; i++) {
 				houghSpace.at<int>(j,i,radius) = 0;
@@ -346,25 +362,27 @@ void intersectionFunc(){
 	Point l1p1, l1p2, l2p1, l2p2, x, d1, d2, r;
 	float cross;
 	double t1;
+
+	// Find all intersections for first 10 detected lines.
 	for (int n = 0; n < 10; n++) {
 		for (int m = 0; m < 10; m++) {
+
+			//Convert x/y coordinates to points
 			l1p1 = Point(lines[n][0],lines[n][1]);
 			l1p2 = Point(lines[n][2],lines[n][3]);
-
 			l2p1 = Point(lines[m][0],lines[m][1]);
 			l2p2 = Point(lines[m][2],lines[m][3]);
 
+			// Calculate the intersection point
 			x = l2p1 - l1p1;
 			d1 = l1p2 - l1p1;
 			d2 = l2p2 - l2p1;
-
 			cross = d1.x*d2.y - d1.y*d2.x;
-			//std::cout << cross << '\n';
 			if(abs(cross) < 1e-8){continue;}
-
 			t1 = (x.x * d2.y - x.y*d2.x)/cross;
 			r = l1p1 + d1 * t1;
 
+			// Store x and y cooridnates of intersection point in global variable.
 			intersections[intersectionCount][0] = round(r.x);
 			intersections[intersectionCount][1] = round(r.y);
 			intersectionCount++;
@@ -375,17 +393,24 @@ void intersectionFunc(){
 
 Mat combinationFunc(Mat frame, Mat houghSpaceIMG, Mat houghSpaceIMGCircle){
 	int trueCounter = 0;
+
+	//Loop through all viola jones detections
 	for( int vjcount = 0; vjcount < boards.size(); vjcount++ ){
+		// Flag to stop comaprisons once a viola-jones detecetd board has been reaffirmed with another detection method
 		bool newRect = false;
+
+		//Inner loop to cycle through first 10 detected circles
 		for( int circlecount = 0; circlecount < 10; circlecount++ ){
 
+			//Draw a box around detected circle
 			int radius = circles[circlecount][2];
 			int x = circles[circlecount][0];
 			int y = circles[circlecount][1];
-			//circle(frame, Point(x,y), radius, Scalar( 0, 255, 0 ));
 			Rect_<int> circleRect(x - radius,y - radius,2*radius, 2*radius);
 
+			//IOU circle box with viola-jones box, and add to final detecetd if threshold.
 			if (iou(boards[vjcount], circleRect) > 0.4) {
+				// Check for -1 index, and you are not repeating a similar circle/viola jones bounding box.
 				if (trueCounter > 0 && iou(circleRect, trueBoards[trueCounter-1]) > 0.3) {
 					break;
 				}
@@ -395,17 +420,21 @@ Mat combinationFunc(Mat frame, Mat houghSpaceIMG, Mat houghSpaceIMGCircle){
 				break;
 			}
 		}
+
+		// If the viola-jones detection has not been reaffirmed with circles, then we check with lines.
 		if (newRect == false) {
+
+			//Loop through all lines intersections and draw box the same size as the subject viola jones box around the line intersection.
 			for( int linecount = 0; linecount < intersectionCount; linecount++ ){
 				int x = intersections[linecount][0];
 				int y = intersections[linecount][1];
 				int height = boards[vjcount].height/2;
 				int width = boards[vjcount].width/2;
-				//circle(frame, Point(x,y), radius, Scalar( 0, 255, 0 ));
 				Rect_<int> lineRect(x - width,y - height, width*2, height*2);
 
-
+				//IOU intersection box with viola-jones box, and add to final detecetd if threshold.
 				if (iou(boards[vjcount], lineRect) > 0.85) {
+					// Check for -1 index, and you are not repeating a similar line/viola jones bounding box.
 					if (trueCounter > 0 && iou(lineRect, trueBoards[trueCounter-1]) > 0.1) {
 						break;
 					}
@@ -417,6 +446,7 @@ Mat combinationFunc(Mat frame, Mat houghSpaceIMG, Mat houghSpaceIMGCircle){
 		}
 	}
 
+	// For all cross affirmed detections (either VJ AND Circle, or VJ AND Lines intersections), draw a bounding box.
 	for (int i = 0; i < trueBoards.size(); i++) {
 		rectangle(frame, trueBoards[i], Scalar( 255, 255, 0 ), 3);
 	}
