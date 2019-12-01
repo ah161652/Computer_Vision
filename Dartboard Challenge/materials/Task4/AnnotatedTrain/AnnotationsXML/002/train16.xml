@@ -1,0 +1,22 @@
+<annotation>
+  <folder>images</folder>
+  <filename>train16.jpeg</filename>
+  <size>
+    <width>1024</width>
+    <height>683</height>
+    <depth>3</depth>
+  </size>
+  <segmented>0</segmented>
+  <object>
+    <name>class</name>
+    <pose>center</pose>
+    <truncated>1</truncated>
+    <difficult>0</difficult>
+    <bndbox>
+      <xmin>470</xmin>
+      <ymin>102</ymin>
+      <xmax>750</xmax>
+      <ymax>451</ymax>
+    </bndbox>
+  </object>
+</annotation>
